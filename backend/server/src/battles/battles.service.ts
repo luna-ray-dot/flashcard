@@ -20,7 +20,7 @@ interface ParticipantState {
   avgLatencyMs?: number;
 }
 
-interface BattleState {
+export interface BattleState {
   id: string;
   cardIds: string[];
   mode: BattleMode;

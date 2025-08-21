@@ -3,15 +3,14 @@ import * as pdf from 'pdf-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import { Configuration, OpenAIApi } from 'openai';
+import OpenAI from 'openai';
 
 export type ExtractedCard = { title: string; content: string; level: number };
 
-const openai = new OpenAIApi(
-  new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  }),
-);
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 @Injectable()
 export class UploadsService {
@@ -50,7 +49,7 @@ export class UploadsService {
     fs.writeFileSync(tmpFile, buffer);
 
     const resp = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(tmpFile) as any,
+      file: fs.createReadStream(tmpFile),
       model: 'whisper-1',
     });
 
@@ -80,7 +79,7 @@ export class UploadsService {
     });
 
     const resp = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(tmpAudio) as any,
+      file: fs.createReadStream(tmpAudio),
       model: 'whisper-1',
     });
 

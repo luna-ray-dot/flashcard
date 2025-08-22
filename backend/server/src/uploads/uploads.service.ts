@@ -1,42 +1,30 @@
 import { Injectable, UnsupportedMediaTypeException } from '@nestjs/common';
-import * as pdf from 'pdf-parse';
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import { spawn } from 'child_process';
 import OpenAI from 'openai';
+import pdfParse from 'pdf-parse';
 
 export type ExtractedCard = { title: string; content: string; level: number };
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 @Injectable()
 export class UploadsService {
   private readonly MAX_CARDS = 25;
 
-  async extractCardsFromBuffer(
-    buffer: Buffer,
-    mimetype: string,
-  ): Promise<ExtractedCard[]> {
-    if (mimetype === 'application/pdf') {
-      return this.fromPdf(buffer);
-    }
-    if (mimetype.startsWith('audio/')) {
-      return this.fromAudio(buffer, mimetype.split('/')[1]);
-    }
-    if (mimetype.startsWith('video/')) {
-      return this.fromVideo(buffer, mimetype.split('/')[1]);
-    }
+  async extractCardsFromBuffer(buffer: Buffer, mimetype: string): Promise<ExtractedCard[]> {
+    if (mimetype === 'application/pdf') return this.fromPdf(buffer);
+    if (mimetype.startsWith('audio/')) return this.fromAudio(buffer, mimetype.split('/')[1]);
+    if (mimetype.startsWith('video/')) return this.fromVideo(buffer, mimetype.split('/')[1]);
     throw new UnsupportedMediaTypeException('Unsupported file type');
-    // images: you can wire OCR later (tesseract/vision API)
   }
 
   private async fromPdf(buffer: Buffer): Promise<ExtractedCard[]> {
-    const data = await pdf(buffer);
+    const data = await pdfParse(buffer);
     const text = (data.text || '').replace(/\n{2,}/g, '\n').trim();
-    const chunks = this.chunkText(text, 280, 8); // chunk to Q/A-sized pieces
+    const chunks = this.chunkText(text, 280, 8);
     return chunks.slice(0, this.MAX_CARDS).map((chunk, i) => ({
       title: `PDF Segment ${i + 1}`,
       content: chunk,
@@ -53,8 +41,7 @@ export class UploadsService {
       model: 'whisper-1',
     });
 
-    const transcript = resp.text || '';
-    return this.fromTranscript(transcript);
+    return this.fromTranscript(resp.text ?? '');
   }
 
   private async fromVideo(buffer: Buffer, ext: string): Promise<ExtractedCard[]> {
@@ -62,10 +49,10 @@ export class UploadsService {
     const tmpAudio = path.join('/tmp', `upload.wav`);
     fs.writeFileSync(tmpVideo, buffer);
 
-    // Use ffmpeg to extract audio track
+    // Extract audio via ffmpeg
     await new Promise<void>((resolve, reject) => {
       const ff = spawn('ffmpeg', [
-        '-y', // overwrite
+        '-y',
         '-i', tmpVideo,
         '-vn',
         '-acodec', 'pcm_s16le',
@@ -73,9 +60,7 @@ export class UploadsService {
         '-ac', '1',
         tmpAudio,
       ]);
-      ff.on('close', (code) =>
-        code === 0 ? resolve() : reject(new Error('ffmpeg failed')),
-      );
+      ff.on('close', code => (code === 0 ? resolve() : reject(new Error('ffmpeg failed'))));
     });
 
     const resp = await openai.audio.transcriptions.create({
@@ -83,8 +68,7 @@ export class UploadsService {
       model: 'whisper-1',
     });
 
-    const transcript = resp.text || '';
-    return this.fromTranscript(transcript);
+    return this.fromTranscript(resp.text ?? '');
   }
 
   private fromTranscript(text: string): ExtractedCard[] {
@@ -97,7 +81,7 @@ export class UploadsService {
   }
 
   private chunkText(text: string, targetLen = 240, tolerance = 5): string[] {
-    const sentences = text.split(/(?<=[\.\!\?])\s+/);
+    const sentences = text.split(/(?<=[.?!])\s+/);
     const chunks: string[] = [];
     let current = '';
 

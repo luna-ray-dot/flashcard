@@ -10,15 +10,25 @@ export class ContestsGateway {
   constructor(private readonly contestsService: ContestsService) {}
 
   @SubscribeMessage('joinContest')
-  handleJoinContest(@MessageBody() data: { contestId: string; userId: string }) {
-    const contest = this.contestsService.joinContest(data.contestId, data.userId);
+  async handleJoinContest(@MessageBody() data: { contestId: string; userId: string }): Promise<any> {
+    const contest = await this.contestsService.joinContest(data.contestId, data.userId);
     this.server.to(data.contestId).emit('contestUpdate', contest);
     return contest;
   }
 
   @SubscribeMessage('submitAnswer')
-  handleSubmitAnswer(@MessageBody() data: { contestId: string; userId: string; answer: string; correct: boolean }) {
-    const contest = this.contestsService.submitAnswer(data.contestId, data.userId, data.answer, data.correct);
+  async handleSubmitAnswer(
+    @MessageBody() data: { contestId: string; userId: string; cardId?: string; answer: string; correct: boolean }
+  ): Promise<any> {
+    const cardId = data.cardId || 'dummy_card_id'; // fallback if missing
+    const contest = await this.contestsService.submitAnswer(
+      data.contestId,
+      data.userId,
+      cardId,
+      data.answer,
+      data.correct
+    );
+
     this.server.to(data.contestId).emit('contestUpdate', contest);
 
     if (contest?.winner) {

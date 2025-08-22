@@ -5,44 +5,48 @@ import { ContestsService } from './contests.service';
 export class ContestsController {
   constructor(private readonly contestsService: ContestsService) {}
 
-  // Create a new contest
   @Post('create')
-  async createContest(@Body() body: { cardIds: string[] }) {
-    return this.contestsService.createContest(body.cardIds);
+  async createContest(@Body() body: { cardIds: string[] }): Promise<any> {
+    return await this.contestsService.createContest(body.cardIds);
   }
 
-  // Join an existing contest
   @Post('join/:contestId/:userId')
-  async joinContest(@Param('contestId') contestId: string, @Param('userId') userId: string) {
-    return this.contestsService.joinContest(contestId, userId);
+  async joinContest(
+    @Param('contestId') contestId: string,
+    @Param('userId') userId: string
+  ): Promise<any> {
+    return await this.contestsService.joinContest(contestId, userId);
   }
 
-  // Submit an answer for a contest
   @Post('submit/:contestId/:userId')
   async submitAnswer(
     @Param('contestId') contestId: string,
     @Param('userId') userId: string,
-    @Body() body: { answer: string; correct: boolean },
-  ) {
-    return this.contestsService.submitAnswer(contestId, userId, body.answer, body.correct);
+    @Body() body: { cardId?: string; answer: string; correct: boolean }
+  ): Promise<any> {
+    const cardId = body.cardId || 'dummy_card_id'; // supply dummy if missing
+    return await this.contestsService.submitAnswer(
+      contestId,
+      userId,
+      cardId,
+      body.answer,
+      body.correct
+    );
   }
 
-  // Get a single contest
   @Get(':contestId')
-  async getContest(@Param('contestId') contestId: string) {
-    return this.contestsService.findContest(contestId);
+  async getContest(@Param('contestId') contestId: string): Promise<any> {
+    return await this.contestsService.findContest(contestId);
   }
 
-  // Get all contests
   @Get()
-  async listContests() {
-    return this.contestsService.listContests();
+  async listContests(): Promise<any[]> {
+    return await this.contestsService.listContests();
   }
 
-  // Leaderboard (aggregate top participants)
   @Get('leaderboard')
-  async leaderboard() {
-    const contests = this.contestsService.listContests();
+  async leaderboard(): Promise<{ userId: string; score: number }[]> {
+    const contests = await this.contestsService.listContests();
     const leaderboard: { userId: string; score: number }[] = [];
 
     contests.forEach(c => {

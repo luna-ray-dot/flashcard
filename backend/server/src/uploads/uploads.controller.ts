@@ -1,15 +1,24 @@
 import { Controller, Post, UploadedFile, UseInterceptors, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, dirname, join } from 'path';
 import fs from 'fs';
-import path from 'path';
 import { CardsService } from '../cards/cards.service';
 import OpenAI from 'openai';
 import ffmpeg from 'fluent-ffmpeg';
 import Tesseract from 'tesseract.js';
+import pdfParse from 'pdf-parse';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+/** Expanded CardInput so question/answer are allowed */
+interface CardInput {
+  title?: string;
+  content?: string;
+  question?: string;
+  answer?: string;
+  level?: number;
+}
 
 @Controller('uploads')
 export class UploadsController {
@@ -20,12 +29,12 @@ export class UploadsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: './uploads',
-        filename: (req, file, cb) => {
+        filename: (_, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname));
         },
       }),
-      fileFilter: (req, file, cb) => {
+      fileFilter: (_, file, cb) => {
         const allowed = ['.pdf', '.txt', '.mp3', '.wav', '.mp4', '.jpg', '.jpeg', '.png'];
         if (allowed.includes(extname(file.originalname).toLowerCase())) cb(null, true);
         else cb(new Error('Unsupported file type'), false);
@@ -35,14 +44,13 @@ export class UploadsController {
   async uploadFile(@UploadedFile() file: Express.Multer.File, @Param('userId') userId: string) {
     if (!file) return { error: 'No file uploaded' };
 
-    const filePath = path.resolve(file.path);
+    const filePath = file.path;
     let extractedText = '';
 
     try {
       // 1️⃣ Text or PDF
       if (file.mimetype.startsWith('text') || file.mimetype === 'application/pdf') {
         if (file.mimetype === 'application/pdf') {
-          const pdfParse = require('pdf-parse');
           const dataBuffer = fs.readFileSync(filePath);
           const pdfData = await pdfParse(dataBuffer);
           extractedText = pdfData.text;
@@ -62,7 +70,7 @@ export class UploadsController {
 
       // 3️⃣ Video → Audio → Transcribe
       else if (file.mimetype.startsWith('video')) {
-        const audioPath = path.join(path.dirname(filePath), 'audio.wav');
+        const audioPath = join(dirname(filePath), 'audio.wav');
         await new Promise<void>((resolve, reject) => {
           ffmpeg(filePath)
             .output(audioPath)
@@ -91,21 +99,28 @@ export class UploadsController {
         messages: [{ role: 'user', content: prompt }],
       });
 
-      const cards: { question: string; answer: string }[] = JSON.parse(aiResponse.choices[0].message.content);
+      const jsonText = aiResponse.choices?.[0]?.message?.content ?? '[]';
+      let cards: CardInput[] = [];
+      try {
+        cards = JSON.parse(jsonText) as CardInput[];
+      } catch (err) {
+        console.error('Failed to parse AI response JSON', err);
+        cards = [];
+      }
 
       // 6️⃣ Create cards in Neo4j
-      const createdCards = [];
+      const createdCards: any[] = []; // explicitly typed
       for (const c of cards) {
         const card = await this.cardsService.createCard(userId, {
-          title: c.question,
-          content: c.answer,
-          level: 1,
+          title: c.title || c.question || 'Untitled',
+          content: c.content || c.answer || '',
+          level: c.level ?? 1, // safe default
         });
         createdCards.push(card);
       }
 
       return { uploaded: true, cards: createdCards };
-    } catch (err) {
+    } catch (err: any) {
       console.error('File processing error', err);
       return { error: err.message };
     }

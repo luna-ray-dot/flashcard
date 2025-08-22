@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsInt, Min } from 'class-validator';
 
 export class CreateCardDto {
   @IsString()
@@ -11,4 +11,9 @@ export class CreateCardDto {
   @IsArray()
   @IsOptional()
   relatedCardIds?: string[]; // Neo4j relationship links
+
+  @IsInt()
+  @IsOptional()
+  @Min(1)
+  level?: number; // ✅ add this to fix the TS error
 }

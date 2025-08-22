@@ -7,5 +7,6 @@ import { Neo4jModule } from '../neo4j/neo4j.module';
   imports: [Neo4jModule],
   controllers: [CardsController],
   providers: [CardsService],
+  exports: [CardsService], // <-- add this line
 })
 export class CardsModule {}

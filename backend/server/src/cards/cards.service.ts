@@ -31,7 +31,7 @@ export class CardsService {
       `,
       { userId }
     );
-    return result.records.map((r) => r.get('c').properties);
+    return result.records.map((r: any) => r.get('c').properties);
   }
 
   async getNextCard(userId: string) {

@@ -16,7 +16,7 @@ export class CardsAIService {
       LIMIT $limit
     `, { userId, limit });
 
-    return result.records.map(r => ({
+    return result.records.map((r: any) => ({
       id: r.get('c').properties.id,
       title: r.get('c').properties.title,
       prerequisites: r.get('prerequisites'),

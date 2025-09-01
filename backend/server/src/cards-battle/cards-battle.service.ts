@@ -39,6 +39,6 @@ export class CardsBattleService {
       LIMIT 10
     `);
 
-    return result.records.map(r => r.toObject());
+    return result.records.map((r: any) => r.toObject());
   }
 }

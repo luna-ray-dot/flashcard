@@ -40,7 +40,11 @@ export class UsersService {
       { username, password: hashedPassword, email }
     );
 
-    return result.records[0]?.get('u').properties;
+    const user = result.records[0]?.get('u');
+    if (!user) {
+      throw new BadRequestException('Failed to create user');
+    }
+    return user.properties;
   }
 
   // List all users
@@ -52,7 +56,7 @@ export class UsersService {
       `
     );
 
-    return result.records.map((r) => r.get('u').properties);
+    return result.records.map((r: any) => r.get('u')?.properties || {});
   }
 
   // Save onboarding data
@@ -81,7 +85,11 @@ export class UsersService {
       { userId, name, age, school, field, learningSpeed }
     );
 
-    return result.records[0]?.get('u').properties;
+    const user = result.records[0]?.get('u');
+    if (!user) {
+      throw new BadRequestException('Failed to update user');
+    }
+    return user.properties;
   }
 
   // Find user by ID

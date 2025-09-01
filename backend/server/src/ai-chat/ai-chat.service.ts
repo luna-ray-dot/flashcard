@@ -14,14 +14,14 @@ export class AiChatService {
       { userId },
     );
 
-    return result.records.map(r => r.get('c').properties);
+    return result.records.map((r: any) => r.get('c').properties);
   }
 
   async askQuestion(userId: string, message: string) {
     // AI logic placeholder (can integrate OpenAI API or local model)
     const recommendations = await this.getRecommendations(userId);
     return {
-      reply: `Based on your progress, try reviewing: ${recommendations.map(c => c.title).join(', ')}`,
+      reply: `Based on your progress, try reviewing: ${recommendations.map((c: any) => c.title).join(', ')}`,
     };
   }
 }

@@ -22,21 +22,27 @@ export class Neo4jService implements OnModuleDestroy {
     return this.driver;
   }
 
-  async read(query: string, params?: any) {
+  async read(query: string, params?: any): Promise<any> {
     const session: Session = this.driver.session({ defaultAccessMode: neo4j.session.READ });
     try {
       const result = await session.run(query, params);
       return result;
+    } catch (error) {
+      console.error('Neo4j read error:', error);
+      throw error;
     } finally {
       await session.close();
     }
   }
 
-  async write(query: string, params?: any) {
+  async write(query: string, params?: any): Promise<any> {
     const session: Session = this.driver.session({ defaultAccessMode: neo4j.session.WRITE });
     try {
       const result = await session.run(query, params);
       return result;
+    } catch (error) {
+      console.error('Neo4j write error:', error);
+      throw error;
     } finally {
       await session.close();
     }

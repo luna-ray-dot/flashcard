@@ -13,7 +13,10 @@ import { BattleState, Participant } from './battles.types';
 @WebSocketGateway({ cors: true })
 export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
+
+
   server!: Server; // definite assignment
+main
 
   constructor(private readonly battlesService: BattlesService) {}
 

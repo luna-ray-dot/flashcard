@@ -2,7 +2,9 @@ import { IsString, IsEmail, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
+
   readonly username!: string; // ✅ definite assignment assertion
+main
 
   @IsEmail()
   readonly email!: string;
@@ -10,4 +12,8 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   readonly password!: string;
+
+  @IsString()
+  readonly nickname?: string;
+ main
 }

@@ -7,7 +7,12 @@ import pdfParse from 'pdf-parse';
 
 export type ExtractedCard = { title: string; content: string; level: number };
 
+
+// Initialize OpenAI client conditionally
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+main
 
 @Injectable()
 export class UploadsService {
@@ -32,6 +37,10 @@ export class UploadsService {
   }
 
   private async fromAudio(buffer: Buffer, ext: string): Promise<ExtractedCard[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured. Audio transcription requires OPENAI_API_KEY environment variable.');
+    }
+    
     const tmpFile = path.join('/tmp', `upload.${ext}`);
     fs.writeFileSync(tmpFile, buffer);
 
@@ -44,6 +53,10 @@ export class UploadsService {
   }
 
   private async fromVideo(buffer: Buffer, ext: string): Promise<ExtractedCard[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured. Video transcription requires OPENAI_API_KEY environment variable.');
+    }
+    
     const tmpVideo = path.join('/tmp', `upload.${ext}`);
     const tmpAudio = path.join('/tmp', `upload.wav`);
     fs.writeFileSync(tmpVideo, buffer);

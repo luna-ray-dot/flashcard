@@ -9,7 +9,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import Tesseract from 'tesseract.js';
 import pdfParse from 'pdf-parse';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 interface CardInput {
   title?: string;
@@ -55,13 +55,33 @@ export class UploadsController {
         } else {
           extractedText = fs.readFileSync(filePath, 'utf-8');
         }
+
+      }
+
+      // 2️⃣ Audio transcription
+      else if (file.mimetype.startsWith('audio')) {
+        if (!openai) {
+          return { error: 'OpenAI API key not configured. Audio transcription requires OPENAI_API_KEY environment variable.' };
+        }
+
       } else if (file.mimetype.startsWith('audio')) {
+ main
         const transcription = await openai.audio.transcriptions.create({
           file: fs.createReadStream(filePath),
           model: 'whisper-1',
         });
         extractedText = transcription.text;
+
+      }
+
+      // 3️⃣ Video → Audio → Transcribe
+      else if (file.mimetype.startsWith('video')) {
+        if (!openai) {
+          return { error: 'OpenAI API key not configured. Video transcription requires OPENAI_API_KEY environment variable.' };
+        }
+
       } else if (file.mimetype.startsWith('video')) {
+ main
         const audioPath = join(dirname(filePath), 'audio.wav');
         await new Promise<void>((resolve, reject) => {
           ffmpeg(filePath)
@@ -81,6 +101,11 @@ export class UploadsController {
         extractedText = data.text;
       }
 
+      // 5️⃣ AI generates cards
+      if (!openai) {
+        return { error: 'OpenAI API key not configured. AI card generation requires OPENAI_API_KEY environment variable.' };
+      }
+main
       const prompt = `Generate a list of flashcards (question and answer) from this content:\n${extractedText}\nOutput JSON array [{ "question": "...", "answer": "..." }]`;
       const aiResponse = await openai.chat.completions.create({
         model: 'gpt-4',

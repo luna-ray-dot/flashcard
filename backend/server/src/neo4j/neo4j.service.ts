@@ -10,12 +10,13 @@ export class Neo4jService implements OnModuleDestroy {
     const uri = this.configService.get<string>('neo4j.uri');
     const user = this.configService.get<string>('neo4j.user');
     const password = this.configService.get<string>('neo4j.password');
+    const encrypted = this.configService.get<boolean>('neo4j.encrypted');
 
     if (!uri || !user || !password) {
       throw new Error('Neo4j credentials are missing in environment variables');
     }
 
-    this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
+    this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password), { encrypted });
   }
 
   getDriver(): Driver {

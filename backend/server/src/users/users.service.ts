@@ -100,4 +100,17 @@ export class UsersService {
 
     return result.records[0].get('u').properties;
   }
+
+  // Find user by username
+  async findByUsername(username: string) {
+    const result = await this.neo4jService.read(
+      `
+      MATCH (u:User {username: $username})
+      RETURN u
+      `,
+      { username }
+    );
+
+    return result.records.length ? result.records[0].get('u').properties : null;
+  }
 }

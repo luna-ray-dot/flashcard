@@ -7,8 +7,12 @@ import pdfParse from 'pdf-parse';
 
 export type ExtractedCard = { title: string; content: string; level: number };
 
+
 // Initialize OpenAI client conditionally
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+main
 
 @Injectable()
 export class UploadsService {
@@ -57,7 +61,6 @@ export class UploadsService {
     const tmpAudio = path.join('/tmp', `upload.wav`);
     fs.writeFileSync(tmpVideo, buffer);
 
-    // Extract audio via ffmpeg
     await new Promise<void>((resolve, reject) => {
       const ff = spawn('ffmpeg', [
         '-y',

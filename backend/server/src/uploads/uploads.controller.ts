@@ -11,7 +11,6 @@ import pdfParse from 'pdf-parse';
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
-/** Expanded CardInput so question/answer are allowed */
 interface CardInput {
   title?: string;
   content?: string;
@@ -48,7 +47,6 @@ export class UploadsController {
     let extractedText = '';
 
     try {
-      // 1️⃣ Text or PDF
       if (file.mimetype.startsWith('text') || file.mimetype === 'application/pdf') {
         if (file.mimetype === 'application/pdf') {
           const dataBuffer = fs.readFileSync(filePath);
@@ -57,6 +55,7 @@ export class UploadsController {
         } else {
           extractedText = fs.readFileSync(filePath, 'utf-8');
         }
+
       }
 
       // 2️⃣ Audio transcription
@@ -64,11 +63,15 @@ export class UploadsController {
         if (!openai) {
           return { error: 'OpenAI API key not configured. Audio transcription requires OPENAI_API_KEY environment variable.' };
         }
+
+      } else if (file.mimetype.startsWith('audio')) {
+ main
         const transcription = await openai.audio.transcriptions.create({
           file: fs.createReadStream(filePath),
           model: 'whisper-1',
         });
         extractedText = transcription.text;
+
       }
 
       // 3️⃣ Video → Audio → Transcribe
@@ -76,6 +79,9 @@ export class UploadsController {
         if (!openai) {
           return { error: 'OpenAI API key not configured. Video transcription requires OPENAI_API_KEY environment variable.' };
         }
+
+      } else if (file.mimetype.startsWith('video')) {
+ main
         const audioPath = join(dirname(filePath), 'audio.wav');
         await new Promise<void>((resolve, reject) => {
           ffmpeg(filePath)
@@ -90,10 +96,7 @@ export class UploadsController {
           model: 'whisper-1',
         });
         extractedText = transcription.text;
-      }
-
-      // 4️⃣ Image OCR
-      else if (file.mimetype.startsWith('image')) {
+      } else if (file.mimetype.startsWith('image')) {
         const { data } = await Tesseract.recognize(filePath, 'eng');
         extractedText = data.text;
       }
@@ -102,6 +105,7 @@ export class UploadsController {
       if (!openai) {
         return { error: 'OpenAI API key not configured. AI card generation requires OPENAI_API_KEY environment variable.' };
       }
+main
       const prompt = `Generate a list of flashcards (question and answer) from this content:\n${extractedText}\nOutput JSON array [{ "question": "...", "answer": "..." }]`;
       const aiResponse = await openai.chat.completions.create({
         model: 'gpt-4',
@@ -112,18 +116,16 @@ export class UploadsController {
       let cards: CardInput[] = [];
       try {
         cards = JSON.parse(jsonText) as CardInput[];
-      } catch (err) {
-        console.error('Failed to parse AI response JSON', err);
+      } catch {
         cards = [];
       }
 
-      // 6️⃣ Create cards in Neo4j
-      const createdCards: any[] = []; // explicitly typed
+      const createdCards: any[] = [];
       for (const c of cards) {
         const card = await this.cardsService.createCard(userId, {
           title: c.title || c.question || 'Untitled',
           content: c.content || c.answer || '',
-          level: c.level ?? 1, // safe default
+          level: c.level ?? 1,
         });
         createdCards.push(card);
       }

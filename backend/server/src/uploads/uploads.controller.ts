@@ -9,7 +9,7 @@ import ffmpeg from 'fluent-ffmpeg';
 import Tesseract from 'tesseract.js';
 import pdfParse from 'pdf-parse';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 /** Expanded CardInput so question/answer are allowed */
 interface CardInput {
@@ -61,6 +61,9 @@ export class UploadsController {
 
       // 2️⃣ Audio transcription
       else if (file.mimetype.startsWith('audio')) {
+        if (!openai) {
+          return { error: 'OpenAI API key not configured. Audio transcription requires OPENAI_API_KEY environment variable.' };
+        }
         const transcription = await openai.audio.transcriptions.create({
           file: fs.createReadStream(filePath),
           model: 'whisper-1',
@@ -70,6 +73,9 @@ export class UploadsController {
 
       // 3️⃣ Video → Audio → Transcribe
       else if (file.mimetype.startsWith('video')) {
+        if (!openai) {
+          return { error: 'OpenAI API key not configured. Video transcription requires OPENAI_API_KEY environment variable.' };
+        }
         const audioPath = join(dirname(filePath), 'audio.wav');
         await new Promise<void>((resolve, reject) => {
           ffmpeg(filePath)
@@ -93,6 +99,9 @@ export class UploadsController {
       }
 
       // 5️⃣ AI generates cards
+      if (!openai) {
+        return { error: 'OpenAI API key not configured. AI card generation requires OPENAI_API_KEY environment variable.' };
+      }
       const prompt = `Generate a list of flashcards (question and answer) from this content:\n${extractedText}\nOutput JSON array [{ "question": "...", "answer": "..." }]`;
       const aiResponse = await openai.chat.completions.create({
         model: 'gpt-4',

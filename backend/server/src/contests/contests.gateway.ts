@@ -5,7 +5,7 @@ import { ContestsService } from './contests.service';
 @WebSocketGateway({ cors: true })
 export class ContestsGateway {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(private readonly contestsService: ContestsService) {}
 

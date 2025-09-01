@@ -2,7 +2,7 @@ import { IsString, IsOptional, IsArray, IsInt, Min } from 'class-validator';
 
 export class CreateCardDto {
   @IsString()
-  title: string;
+  title!: string;
 
   @IsString()
   @IsOptional()

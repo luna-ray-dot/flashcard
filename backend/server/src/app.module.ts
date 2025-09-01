@@ -9,10 +9,14 @@ import { AiChatModule } from './ai-chat/ai-chat.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { BattlesModule } from './battles/battles.module';
 import { AiModule } from './ai/ai.module';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ 
+      isGlobal: true,
+      load: [configuration],
+    }),
     Neo4jModule,
     UsersModule,
     CardsModule,

@@ -22,60 +22,70 @@ main
 
   @SubscribeMessage('joinBattle')
   async handleJoinBattle(@MessageBody() data: { battleId: string; userId: string }) {
-    const battle: BattleState = await this.battlesService.joinBattle(data.battleId, data.userId);
-    this.server.to(data.battleId).emit('battleUpdate', battle);
+    try {
+      const battle: BattleState = await this.battlesService.joinBattle(data.battleId, data.userId);
+      this.server.to(data.battleId).emit('battleUpdate', battle);
 
-    const humanCount = battle.participants.filter((p: Participant) => !p.isAI).length;
-    const aiExists = battle.participants.some((p: Participant) => p.isAI);
+      const humanCount = battle.participants.filter((p: Participant) => !p.isAI).length;
+      const aiExists = battle.participants.some((p: Participant) => p.isAI);
 
-    if (humanCount === 1 && !aiExists) {
-      const aiDelay = 2000 + Math.random() * 4000;
-      const correctChance = 0.6 + Math.random() * 0.3;
+      if (humanCount === 1 && !aiExists) {
+        const aiDelay = 2000 + Math.random() * 4000;
+        const correctChance = 0.6 + Math.random() * 0.3;
 
-      setTimeout(async () => {
-        await this.battlesService.joinBattle(data.battleId, 'AI_BOT', true);
-        const aiAnswer = Math.random() < correctChance ? 'AI Correct' : 'AI Wrong';
-        const nextCardId = battle.currentCardId || 'dummy_card_id';
-        const updatedBattle = await this.battlesService.submitAnswer(
-          data.battleId,
-          'AI_BOT',
-          nextCardId,
-          aiAnswer
-        );
+        setTimeout(async () => {
+          await this.battlesService.joinBattle(data.battleId, 'AI_BOT', true);
+          const aiAnswer = Math.random() < correctChance ? 'AI Correct' : 'AI Wrong';
+          const nextCardId = battle.currentCardId || 'dummy_card_id';
+          const updatedBattle = await this.battlesService.submitAnswer(
+            data.battleId,
+            'AI_BOT',
+            nextCardId,
+            aiAnswer
+          );
 
-        this.server.to(data.battleId).emit('battleUpdate', updatedBattle);
+          this.server.to(data.battleId).emit('battleUpdate', updatedBattle);
 
-        if (updatedBattle.winner) {
-          this.server.to(data.battleId).emit('notification', {
-            message: `${updatedBattle.winner} wins the battle! 🎉`,
-            type: 'success',
-          });
-        }
-      }, aiDelay);
+          if (updatedBattle.winner) {
+            this.server.to(data.battleId).emit('notification', {
+              message: `${updatedBattle.winner} wins the battle! 🎉`,
+              type: 'success',
+            });
+          }
+        }, aiDelay);
+      }
+
+      return battle;
+    } catch (error) {
+      console.error('Error joining battle:', error);
+      throw error;
     }
-
-    return battle;
   }
 
   @SubscribeMessage('submitAnswer')
   async handleSubmitAnswer(@MessageBody() data: { battleId: string; userId: string; cardId: string; answer: string }) {
-    const battle: BattleState = await this.battlesService.submitAnswer(
-      data.battleId,
-      data.userId,
-      data.cardId,
-      data.answer
-    );
+    try {
+      const battle: BattleState = await this.battlesService.submitAnswer(
+        data.battleId,
+        data.userId,
+        data.cardId,
+        data.answer
+      );
 
-    this.server.to(data.battleId).emit('battleUpdate', battle);
+      this.server.to(data.battleId).emit('battleUpdate', battle);
 
-    if (battle.winner) {
-      this.server.to(data.battleId).emit('notification', {
-        message: `${battle.winner} wins the battle! 🎉`,
-        type: 'success',
-      });
+      if (battle.winner) {
+        this.server.to(data.battleId).emit('notification', {
+          message: `${battle.winner} wins the battle! 🎉`,
+          type: 'success',
+        });
+      }
+
+      return battle;
+    } catch (error) {
+      console.error('Error submitting answer:', error);
+      throw error;
     }
-
-    return battle;
   }
 
   handleConnection(client: any) {
